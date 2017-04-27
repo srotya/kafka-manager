@@ -57,17 +57,18 @@ class BasicAuthenticationFilter(configurationFactory: => BasicAuthenticationFilt
   }
 
   private def ldapAuth(username: String, password: String): Boolean = {
+    System.out.println("\n\nChecking ldap auth\n\n");
     var env = new java.util.Hashtable[String, String]()
     env.put(Context.INITIAL_CONTEXT_FACTORY, "com.sun.jndi.ldap.LdapCtxFactory");
     env.put(Context.PROVIDER_URL, configuration.ldapUrl);
     env.put(Context.SECURITY_AUTHENTICATION, "simple");
-    env.put(Context.SECURITY_PRINCIPAL, username);
+    env.put(Context.SECURITY_PRINCIPAL, "cn=" + username + "," + configuration.ldapDn);
     env.put(Context.SECURITY_CREDENTIALS, password);
     try {
       var ctx = new InitialLdapContext(env, null);
       true;
     } catch {
-      case e: Exception => e.printStackTrace(); false;
+      case e: Exception => System.err.println("Login failed:" + username); false;
     }
   }
 
@@ -114,6 +115,7 @@ case class BasicAuthenticationFilterConfiguration(
   passwords: Set[String],
   ldap: Boolean,
   ldapUrl: String,
+  ldapDn: String,
   excluded: Set[String])
 
 object BasicAuthenticationFilterConfiguration {
@@ -158,9 +160,11 @@ object BasicAuthenticationFilterConfiguration {
       .getOrElse(Seq.empty)
       .toSet
 
-    val ldap = configuration.getBoolean("ldap").getOrElse(false);
+    val ldap = boolean("ldap").getOrElse(false)
 
-    val ldapUrl = configuration.getString("ldapUrl").getOrElse("ldap://localhost:389");
+    val ldapUrl = string("ldapUrl").getOrElse("ldap://localhost:389");
+
+    val ldapDn = string("ldapDn").getOrElse("dc=example,dc=com");
 
     BasicAuthenticationFilterConfiguration(
       realm(credentials.isDefined),
@@ -169,6 +173,7 @@ object BasicAuthenticationFilterConfiguration {
       passwords,
       ldap,
       ldapUrl,
+      ldapDn,
       excluded)
   }
 }
