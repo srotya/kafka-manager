@@ -1,6 +1,5 @@
 package controllers
 
-
 import com.typesafe.config.ConfigValueType
 
 import java.util.UUID
@@ -20,6 +19,11 @@ import play.api.mvc.Results.Unauthorized
 
 import scala.collection.JavaConverters._
 import scala.concurrent.Future
+import javax.naming.ldap.LdapContext
+import javax.naming.ldap.InitialLdapContext
+import java.util.Hashtable
+import java.util.HashMap
+import javax.naming.Context
 
 class BasicAuthenticationFilter(configurationFactory: => BasicAuthenticationFilterConfiguration) extends Filter {
 
@@ -29,20 +33,42 @@ class BasicAuthenticationFilter(configurationFactory: => BasicAuthenticationFilt
     else next(requestHeader)
 
   private def isNotExcluded(requestHeader: RequestHeader): Boolean =
-    !configuration.excluded.exists( requestHeader.path matches _ )
+    !configuration.excluded.exists(requestHeader.path matches _)
 
   private def checkAuthentication(requestHeader: RequestHeader, next: RequestHeader => Future[Result]): Future[Result] =
     if (isAuthorized(requestHeader)) addCookie(next(requestHeader))
     else unauthorizedResult
 
-  private def isAuthorized(requestHeader: RequestHeader) = {
-    lazy val authorizedByHeader =
-      requestHeader.headers.get(AUTHORIZATION).exists(expectedHeaderValues)
-
-    lazy val authorizedByCookie =
+  private def isAuthorized(requestHeader: RequestHeader): Boolean = {
+    var auth = requestHeader.headers.get(AUTHORIZATION);
+    if (!auth.isEmpty) {
+      var splits = auth.get.split("\\s");
+      splits = new String(Base64.decodeBase64(splits(1))).split(":");
+      var username = splits(0);
+      var password = splits(1);
+      if (!configuration.ldap) {
+        requestHeader.headers.get(AUTHORIZATION).exists(expectedHeaderValues)
+      } else {
+        ldapAuth(username, password);
+      }
+    } else {
       requestHeader.cookies.get(COOKIE_NAME).exists(_.value == cookieValue)
+    }
+  }
 
-    authorizedByHeader || authorizedByCookie
+  private def ldapAuth(username: String, password: String): Boolean = {
+    var env = new java.util.Hashtable[String, String]()
+    env.put(Context.INITIAL_CONTEXT_FACTORY, "com.sun.jndi.ldap.LdapCtxFactory");
+    env.put(Context.PROVIDER_URL, configuration.ldapUrl);
+    env.put(Context.SECURITY_AUTHENTICATION, "simple");
+    env.put(Context.SECURITY_PRINCIPAL, username);
+    env.put(Context.SECURITY_CREDENTIALS, password);
+    try {
+      var ctx = new InitialLdapContext(env, null);
+      true;
+    } catch {
+      case e: Exception => e.printStackTrace(); false;
+    }
   }
 
   private def addCookie(result: Future[Result]) =
@@ -75,21 +101,20 @@ class BasicAuthenticationFilter(configurationFactory: => BasicAuthenticationFilt
 object BasicAuthenticationFilter {
   def apply() = new BasicAuthenticationFilter(
     BasicAuthenticationFilterConfiguration.parse(
-      play.api.Play.current.configuration
-    )
-  )
+      play.api.Play.current.configuration))
 
   def apply(configuration: => Configuration) = new BasicAuthenticationFilter(
-    BasicAuthenticationFilterConfiguration parse configuration
-  )
+    BasicAuthenticationFilterConfiguration parse configuration)
 }
 
 case class BasicAuthenticationFilterConfiguration(
-                                                   realm: String,
-                                                   enabled: Boolean,
-                                                   username: String,
-                                                   passwords: Set[String],
-                                                   excluded: Set[String])
+  realm: String,
+  enabled: Boolean,
+  username: String,
+  passwords: Set[String],
+  ldap: Boolean,
+  ldapUrl: String,
+  excluded: Set[String])
 
 object BasicAuthenticationFilterConfiguration {
 
@@ -133,12 +158,17 @@ object BasicAuthenticationFilterConfiguration {
       .getOrElse(Seq.empty)
       .toSet
 
+    val ldap = configuration.getBoolean("ldap").getOrElse(false);
+
+    val ldapUrl = configuration.getString("ldapUrl").getOrElse("ldap://localhost:389");
+
     BasicAuthenticationFilterConfiguration(
       realm(credentials.isDefined),
       enabled,
       username,
       passwords,
-      excluded
-    )
+      ldap,
+      ldapUrl,
+      excluded)
   }
 }

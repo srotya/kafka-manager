@@ -1,5 +1,7 @@
 *.class
 
+.cache-*
+
 /project/
 
 .DS_Store*
