@@ -62,7 +62,7 @@ class BasicAuthenticationFilter(configurationFactory: => BasicAuthenticationFilt
     env.put(Context.INITIAL_CONTEXT_FACTORY, "com.sun.jndi.ldap.LdapCtxFactory");
     env.put(Context.PROVIDER_URL, configuration.ldapUrl);
     env.put(Context.SECURITY_AUTHENTICATION, "simple");
-    env.put(Context.SECURITY_PRINCIPAL, "cn=" + username + "," + configuration.ldapDn);
+    env.put(Context.SECURITY_PRINCIPAL, configuration.ldapPrefix + username + configuration.ldapDn);
     env.put(Context.SECURITY_CREDENTIALS, password);
     try {
       var ctx = new InitialLdapContext(env, null);
@@ -116,6 +116,7 @@ case class BasicAuthenticationFilterConfiguration(
   ldap: Boolean,
   ldapUrl: String,
   ldapDn: String,
+  ldapPrefix: String,
   excluded: Set[String])
 
 object BasicAuthenticationFilterConfiguration {
@@ -164,7 +165,9 @@ object BasicAuthenticationFilterConfiguration {
 
     val ldapUrl = string("ldapUrl").getOrElse("ldap://localhost:389");
 
-    val ldapDn = string("ldapDn").getOrElse("dc=example,dc=com");
+    val ldapDn = string("ldapDn").getOrElse(",dc=example,dc=com");
+
+    val ldapPrefix = string("ldapPrefix").getOrElse("cn=");
 
     BasicAuthenticationFilterConfiguration(
       realm(credentials.isDefined),
@@ -174,6 +177,7 @@ object BasicAuthenticationFilterConfiguration {
       ldap,
       ldapUrl,
       ldapDn,
+      ldapPrefix,
       excluded)
   }
 }

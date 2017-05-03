@@ -69,7 +69,7 @@ enablePlugins(SbtNativePackager)
    http://www.scala-sbt.org/sbt-native-packager/formats/debian.html
 */
 
-maintainer := "Yahoo <yahoo@example.com>"
+maintainer := "Ambud"
 packageSummary := "A tool for managing Apache Kafka"
 packageDescription := "A tool for managing Apache Kafka"
 
@@ -84,8 +84,8 @@ packageDescription := "A tool for managing Apache Kafka"
 */
 
 rpmRelease := "1"
-rpmVendor := "yahoo"
-rpmUrl := Some("https://github.com/yahoo/kafka-manager")
+rpmVendor := "Ambud Sharma"
+rpmUrl := Some("https://github.com/srotya/kafka-manager")
 rpmLicense := Some("Apache")
 rpmGroup := Some("kafka-manager")
 

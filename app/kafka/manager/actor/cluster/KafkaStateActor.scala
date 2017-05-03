@@ -45,6 +45,7 @@ import scala.util.{Failure, Success, Try}
 import kafka.manager.utils._
 
 import scala.collection.JavaConverters._
+import javax.security.auth.login.LoginContext
 
 case class KafkaAdminClientActorConfig(clusterContext: ClusterContext, longRunningPoolConfig: LongRunningPoolConfig, kafkaStateActorPath: ActorPath)
 case class KafkaAdminClientActor(config: KafkaAdminClientActorConfig) extends BaseClusterQueryActor with LongRunningPoolActor {
@@ -186,6 +187,10 @@ case class KafkaManagedOffsetCache(clusterContext: ClusterContext
     props.put("key.deserializer", "org.apache.kafka.common.serialization.ByteArrayDeserializer")
     props.put("value.deserializer", "org.apache.kafka.common.serialization.ByteArrayDeserializer")
     props.put("auto.offset.reset", "latest")
+    val kerberos = System.getProperty("kerberos.enabled");
+    if (kerberos != null) {
+       props.put("security.protocol", "SASL_PLAINTEXT");
+    }
     consumerProperties.foreach {
       cp => props.putAll(cp)
     }
