@@ -27,7 +27,7 @@ trait CuratorAwareActor extends BaseActor {
   protected def getCurator(config: CuratorConfig): CuratorFramework = {
     val kerberos = System.getProperty("kerberos.enabled");
     if (kerberos != null) {
-      System.err.println("\n\nKerberos not null" + kerberos + "\n\n");
+      System.err.println("\n\nKerberos is enabled\n\n");
       System.setProperty("zookeeper.sasl.client", "true");
       var principal = "kafka";
       System.setProperty(ZooKeeperSaslClient.LOGIN_CONTEXT_NAME_KEY,
